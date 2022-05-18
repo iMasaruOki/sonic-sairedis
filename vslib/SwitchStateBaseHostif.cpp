@@ -5,6 +5,7 @@
 #include "meta/sai_serialize.h"
 #include "meta/NotificationPortStateChange.h"
 
+#include "swss/exec.h"
 #include "swss/logger.h"
 
 #include <sys/types.h>
@@ -675,10 +676,33 @@ sai_status_t SwitchStateBase::vs_create_hostif_tap_interface(
         return SAI_STATUS_FAILURE;
     }
 
+#if 1 /* XXX veth direct interface test */
+
+    std::string res;
+    std::string cmds = std::string("ip link set name tmpnic dev ") + vname;
+    int ret = swss::exec(cmds, res);
+    if (ret)
+    {
+        SWSS_LOG_ERROR("Command '%s' failed with rc %d", cmds.c_str(), ret);
+    }
+    cmds = std::string("ip link set name " + std::string(vname) + " dev ") + name;
+    ret = swss::exec(cmds, res);
+    if (ret)
+    {
+        SWSS_LOG_ERROR("Command '%s' failed with rc %d", cmds.c_str(), ret);
+    }
+    cmds = std::string("ip link set name " + std::string(name) + " dev tmpnic");
+    ret = swss::exec(cmds, res);
+    if (ret)
+    {
+        SWSS_LOG_ERROR("Command '%s' failed with rc %d", cmds.c_str(), ret);
+    }
+#else
     if (!hostif_create_tap_veth_forwarding(name, tapfd, obj_id))
     {
         SWSS_LOG_ERROR("forwarding rule on %s was not added", name.c_str());
     }
+#endif /* XXX */
 
     SWSS_LOG_INFO("mapping interface %s to port id %s",
             vname.c_str(),
