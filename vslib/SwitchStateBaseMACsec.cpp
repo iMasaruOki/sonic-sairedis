@@ -494,7 +494,7 @@ sai_status_t SwitchStateBase::loadMACsecAttrFromMACsecPort(
         return SAI_STATUS_FAILURE;
     }
 
-    macsecAttr.m_vethName = vs_get_veth_name(macsecAttr.m_info->m_name, portId);
+    macsecAttr.m_vethName = macsecAttr.m_info->m_name;
     macsecAttr.m_macsecName = SAI_VS_MACSEC_PREFIX + macsecAttr.m_vethName;
 
     return SAI_STATUS_SUCCESS;
@@ -570,7 +570,7 @@ sai_status_t SwitchStateBase::loadMACsecAttrFromMACsecSC(
         return SAI_STATUS_FAILURE;
     }
 
-    macsecAttr.m_vethName = vs_get_veth_name(macsecAttr.m_info->m_name, portId);
+    macsecAttr.m_vethName = macsecAttr.m_info->m_name;
     macsecAttr.m_macsecName = SAI_VS_MACSEC_PREFIX + macsecAttr.m_vethName;
 
     return SAI_STATUS_SUCCESS;
@@ -645,7 +645,7 @@ sai_status_t SwitchStateBase::loadMACsecAttrFromMACsecSA(
         return SAI_STATUS_FAILURE;
     }
 
-    macsecAttr.m_vethName = vs_get_veth_name(macsecAttr.m_info->m_name, portId);
+    macsecAttr.m_vethName = macsecAttr.m_info->m_name;
     macsecAttr.m_macsecName = SAI_VS_MACSEC_PREFIX + macsecAttr.m_vethName;
 
     SAI_METADATA_GET_ATTR_BY_ID(attr, SAI_MACSEC_SA_ATTR_AN, attrCount, attrList);
@@ -789,7 +789,7 @@ sai_status_t SwitchStateBase::loadMACsecAttrsFromACLEntry(
             return SAI_STATUS_FAILURE;
         }
 
-        macsecAttrs.back().m_vethName = vs_get_veth_name(macsecAttrs.back().m_info->m_name, portId);
+        macsecAttrs.back().m_vethName = macsecAttrs.back().m_info->m_name;
         macsecAttrs.back().m_macsecName = SAI_VS_MACSEC_PREFIX + macsecAttrs.back().m_vethName;
         return SAI_STATUS_SUCCESS;
     }

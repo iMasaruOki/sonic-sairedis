@@ -440,7 +440,7 @@ sai_status_t SwitchStateBase::setPort(
 
             if (kvp.second->m_portId == portId)
             {
-                std::string vethname = vs_get_veth_name(tapname, portId);
+                std::string vethname = tapname;
 
                 if (ifup(vethname.c_str(), portId, up, false))
                 {
@@ -465,7 +465,7 @@ sai_status_t SwitchStateBase::setPort(
         {
             SWSS_LOG_INFO("setting new MTU: %d on %s", mtu, name.c_str());
 
-            std::string vname = vs_get_veth_name(name, portId);
+            std::string vname = name;
 
             if (vs_set_dev_mtu(vname.c_str(), mtu) < 0)
             {

@@ -42,8 +42,6 @@ HostInterfaceInfo::HostInterfaceInfo(
 
     m_run_thread = true;
 
-    m_e2t = std::make_shared<std::thread>(&HostInterfaceInfo::veth2tap_fun, this);
-    m_t2e = std::make_shared<std::thread>(&HostInterfaceInfo::tap2veth_fun, this);
 }
 
 HostInterfaceInfo::~HostInterfaceInfo()

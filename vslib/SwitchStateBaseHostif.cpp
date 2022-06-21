@@ -384,7 +384,7 @@ std::string SwitchStateBase::vs_get_veth_name(
 {
     SWSS_LOG_ENTER();
 
-    std::string vethname = SAI_VS_VETH_PREFIX + tapname;
+    std::string vethname = tapname;
 
     // check if user override interface names
 
@@ -597,50 +597,19 @@ sai_status_t SwitchStateBase::vs_create_hostif_tap_interface(
 
     std::string name = std::string(attr_name->value.chardata);
 
-    // create TAP device
+    // Rename veth device to Ethernet*
 
     SWSS_LOG_INFO("creating hostif %s", name.c_str());
 
-    int tapfd = vs_create_tap_device(name.c_str(), IFF_TAP | IFF_MULTI_QUEUE | IFF_NO_PI);
-
-    if (tapfd < 0)
-    {
-        SWSS_LOG_ERROR("failed to create TAP device for %s", name.c_str());
-
-        return SAI_STATUS_FAILURE;
-    }
-
-    SWSS_LOG_INFO("created TAP device for %s, fd: %d", name.c_str(), tapfd);
-
-    sai_attribute_t attr;
-
-    memset(&attr, 0, sizeof(attr));
-
-    attr.id = SAI_SWITCH_ATTR_SRC_MAC_ADDRESS;
-
-    sai_status_t status = get(SAI_OBJECT_TYPE_SWITCH, m_switch_id, 1, &attr);
-
-    if (status != SAI_STATUS_SUCCESS)
-    {
-        SWSS_LOG_ERROR("failed to get SAI_SWITCH_ATTR_SRC_MAC_ADDRESS on switch %s: %s",
-                sai_serialize_object_id(m_switch_id).c_str(),
-                sai_serialize_status(status).c_str());
-    }
-
-    int err = vs_set_dev_mac_address(name.c_str(), attr.value.mac);
-
-    if (err < 0)
-    {
-        SWSS_LOG_ERROR("failed to set MAC address %s for %s",
-                sai_serialize_mac(attr.value.mac).c_str(),
-                name.c_str());
-
-        close(tapfd);
-
-        return SAI_STATUS_FAILURE;
-    }
-
     std::string vname = vs_get_veth_name(name, obj_id);
+
+    std::string cmds = std::string("ip link set name " + std::string(name) + " dev " + vname);
+    std::string res;
+    int ret = swss::exec(cmds, res);
+    if (ret)
+    {
+        SWSS_LOG_ERROR("Command '%s' failed with rc %d: %s", cmds.c_str(), ret, res.c_str());
+    }
 
     int mtu = ETH_FRAME_BUFFER_SIZE;
 
@@ -652,15 +621,16 @@ sai_status_t SwitchStateBase::vs_create_hostif_tap_interface(
     {
         mtu = attrmtu.value.u32;
 
-        SWSS_LOG_INFO("setting new MTU: %d on %s", mtu, vname.c_str());
+        SWSS_LOG_INFO("setting new MTU: %d on %s", mtu, name.c_str());
     }
 
-    vs_set_dev_mtu(vname.c_str(), mtu);
+    vs_set_dev_mtu(name.c_str(), mtu);
+
+    sai_attribute_t attr;
 
     attr.id = SAI_PORT_ATTR_ADMIN_STATE;
 
-    status = get(SAI_OBJECT_TYPE_PORT, obj_id, 1, &attr);
-
+    sai_status_t status = get(SAI_OBJECT_TYPE_PORT, obj_id, 1, &attr);
     if (status != SAI_STATUS_SUCCESS)
     {
         SWSS_LOG_ERROR("failed to get admin state for port %s",
@@ -669,46 +639,18 @@ sai_status_t SwitchStateBase::vs_create_hostif_tap_interface(
         return status;
     }
 
-    if (ifup(vname.c_str(), obj_id, attr.value.booldata, false))
+    if (ifup(name.c_str(), obj_id, attr.value.booldata, false))
     {
-        SWSS_LOG_ERROR("ifup failed on %s", vname.c_str());
+        SWSS_LOG_ERROR("ifup failed on %s", name.c_str());
 
         return SAI_STATUS_FAILURE;
     }
 
-#if 1 /* XXX veth direct interface test */
-
-    std::string res;
-    std::string cmds = std::string("ip link set name tmpnic dev ") + vname;
-    int ret = swss::exec(cmds, res);
-    if (ret)
-    {
-        SWSS_LOG_ERROR("Command '%s' failed with rc %d", cmds.c_str(), ret);
-    }
-    cmds = std::string("ip link set name " + std::string(vname) + " dev ") + name;
-    ret = swss::exec(cmds, res);
-    if (ret)
-    {
-        SWSS_LOG_ERROR("Command '%s' failed with rc %d", cmds.c_str(), ret);
-    }
-    cmds = std::string("ip link set name " + std::string(name) + " dev tmpnic");
-    ret = swss::exec(cmds, res);
-    if (ret)
-    {
-        SWSS_LOG_ERROR("Command '%s' failed with rc %d", cmds.c_str(), ret);
-    }
-#else
-    if (!hostif_create_tap_veth_forwarding(name, tapfd, obj_id))
-    {
-        SWSS_LOG_ERROR("forwarding rule on %s was not added", name.c_str());
-    }
-#endif /* XXX */
-
     SWSS_LOG_INFO("mapping interface %s to port id %s",
-            vname.c_str(),
+            name.c_str(),
             sai_serialize_object_id(obj_id).c_str());
 
-    setIfNameToPortId(vname, obj_id);
+    setIfNameToPortId(name, obj_id);
     setPortIdToTapName(obj_id, name);
 
     SWSS_LOG_INFO("created tap interface %s", name.c_str());
@@ -828,9 +770,7 @@ sai_status_t SwitchStateBase::vs_remove_hostif_tap_interface(
 
     // remove interface mapping
 
-    std::string vname = vs_get_veth_name(name, info->m_portId);
-
-    removeIfNameToPortId(vname);
+    removeIfNameToPortId(name);
     removePortIdToTapName(info->m_portId);
 
     SWSS_LOG_NOTICE("successfully removed hostif tap device: %s", name.c_str());
