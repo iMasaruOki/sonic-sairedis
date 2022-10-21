@@ -611,6 +611,20 @@ sai_status_t SwitchStateBase::vs_create_hostif_tap_interface(
         SWSS_LOG_ERROR("Command '%s' failed with rc %d: %s", cmds.c_str(), ret, res.c_str());
     }
 
+    // Disable offload feature
+    cmds = std::string("ethtool -K " + std::string(name) + " rx-checksumming off");
+    ret = swss::exec(cmds, res);
+    if (ret)
+    {
+        SWSS_LOG_ERROR("Command '%s' failed with rc %d: %s", cmds.c_str(), ret, res.c_str());
+    }
+    cmds = std::string("ethtool -K " + std::string(name) + " tx-checksumming off");
+    ret = swss::exec(cmds, res);
+    if (ret)
+    {
+        SWSS_LOG_ERROR("Command '%s' failed with rc %d: %s", cmds.c_str(), ret, res.c_str());
+    }
+
     int mtu = ETH_FRAME_BUFFER_SIZE;
 
     sai_attribute_t attrmtu;
